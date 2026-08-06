@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>IG-SARIA Dashboard</title>
+  <link rel="stylesheet" href="dashboard.css" />
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <h1>IG <span>Saria</span></h1>
+      <p id="subtitle"></p>
+    </div>
+    <div class="header-actions">
+      <select id="langSelect" class="lang-select" title="Language"></select>
+      <button id="refreshBtn" data-i18n="reAnalyze">Re-analyze</button>
+      <button id="exportBtn" class="primary" data-i18n="exportCsv">Export CSV</button>
+    </div>
+  </header>
+
+  <section class="summary">
+    <div class="stat">
+      <b id="stFollowers">0</b>
+      <span data-i18n="followers">Followers</span>
+    </div>
+    <div class="stat">
+      <b id="stFollowing">0</b>
+      <span data-i18n="following">Following</span>
+    </div>
+    <div class="stat good">
+      <b id="stMutual">0</b>
+      <span data-i18n="mutual">Mutual</span>
+    </div>
+    <div class="stat bad">
+      <b id="stNotBack">0</b>
+      <span data-i18n="notFollowingBack">Not following back</span>
+    </div>
+    <div class="stat warn">
+      <b id="stFans">0</b>
+      <span data-i18n="fans">Fans (not followed)</span>
+    </div>
+  </section>
+
+  <div class="toolbar">
+    <input id="searchInput" type="text" data-i18n-placeholder="filterPlaceholder" placeholder="Filter list..." />
+  </div>
+
+  <nav class="tabs" id="tabs">
+    <button class="tab active" data-tab="mutual"><span data-i18n="mutual">Mutual</span> <span id="countMutual">0</span></button>
+    <button class="tab" data-tab="notback"><span data-i18n="notFollowingBack">Not following back</span> <span id="countNotBack">0</span></button>
+    <button class="tab" data-tab="fans"><span data-i18n="fans">Fans</span> <span id="countFans">0</span></button>
+    <button class="tab" data-tab="allf"><span data-i18n="allFollowers">All followers</span> <span id="countAllF">0</span></button>
+    <button class="tab" data-tab="allg"><span data-i18n="allFollowing">All following</span> <span id="countAllG">0</span></button>
+  </nav>
+
+  <div class="list-wrap">
+    <ul id="list"></ul>
+    <p id="empty" class="hidden"></p>
+  </div>
+
+  <footer>
+    <p id="footnote"></p>
+  </footer>
+
+  <script src="i18n.js"></script>
+  <script src="dashboard.js"></script>
+</body>
+</html>

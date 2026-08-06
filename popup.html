@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>IG-SARIA</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <header>
+    <div class="head-row">
+      <h1>IG <span>Saria</span></h1>
+      <select id="langSelect" class="lang-select" title="Language"></select>
+    </div>
+    <p class="tag" data-i18n="tagline"></p>
+  </header>
+
+  <section class="nav">
+    <input id="usernameInput" type="text" data-i18n-placeholder="placeholder" placeholder="Enter username or URL" />
+    <button id="goBtn" data-i18n="go">Go</button>
+  </section>
+
+  <section id="profile" class="card hidden">
+    <div class="profile-head">
+      <span id="profileUsername" class="handle">@&hellip;</span>
+      <span id="loginStatus" class="badge"></span>
+    </div>
+    <div class="stats">
+      <div class="stat">
+        <b id="followersCount">&ndash;</b>
+        <span data-i18n="followers">Followers</span>
+      </div>
+      <div class="stat">
+        <b id="followingCount">&ndash;</b>
+        <span data-i18n="following">Following</span>
+      </div>
+    </div>
+    <div id="warning" class="warning hidden">
+      <strong><span class="warn-ic">&#9888;</span> <span data-i18n="warningTitle"></span></strong>
+      <p data-i18n="warningText"></p>
+    </div>
+    <div id="exportHint" class="export-hint hidden">
+      <strong><span class="warn-ic">&#9888;</span> <span data-i18n="exportHintTitle"></span></strong>
+      <p data-i18n="exportHintText"></p>
+      <a id="exportLink" href="https://ig-saria.vercel.app/" target="_blank" rel="noopener" data-i18n="exportHintLink">ig-saria.vercel.app</a>
+    </div>
+    <div id="loginHint" class="hint hidden" data-i18n="loginHint"></div>
+  </section>
+
+  <section id="actions" class="hidden">
+    <button id="analyzeBtn" class="primary big" data-i18n="analyze">Analyze Followers &amp; Following</button>
+  </section>
+
+  <section id="progress" class="card hidden">
+    <div class="bar"><div id="barFill"></div></div>
+    <p id="progressText"></p>
+    <button id="cancelBtn" class="ghost" data-i18n="cancel">Cancel</button>
+  </section>
+
+  <section id="done" class="card hidden">
+    <p data-i18n="analyzingDone"></p>
+  </section>
+
+  <p id="status"></p>
+
+  <script src="i18n.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

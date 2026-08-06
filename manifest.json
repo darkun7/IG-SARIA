@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "IG-SARIA",
+  "version": "1.0.0",
+  "description": "Instagram follower/following list tool with a safety check for accounts over 10k followers.",
+  "permissions": ["activeTab", "cookies", "storage"],
+  "host_permissions": ["https://www.instagram.com/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {
+    "16": "logo-saria.png",
+    "48": "logo-saria.png",
+    "128": "logo-saria.png"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "IG-SARIA",
+    "default_icon": "logo-saria.png"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://www.instagram.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
