@@ -14,9 +14,15 @@
     <div class="header-actions">
       <select id="langSelect" class="lang-select" title="Language"></select>
       <button id="refreshBtn" data-i18n="reAnalyze">Re-analyze</button>
-      <button id="exportBtn" class="primary" data-i18n="exportCsv">Export CSV</button>
+      <button id="continueBtn" class="hidden" data-i18n="continueCollecting">Continue collecting</button>
+      <button id="exportBtn" class="primary">Export CSV</button>
     </div>
   </header>
+
+  <section id="collectingBar" class="collecting-bar hidden">
+    <div class="collecting-text" id="collectingText"></div>
+    <div class="collecting-track"><div class="collecting-fill" id="collectingFill"></div></div>
+  </section>
 
   <section class="summary">
     <div class="stat">
@@ -41,9 +47,11 @@
     </div>
   </section>
 
-  <div class="toolbar">
+  <section class="toolbar">
     <input id="searchInput" type="text" data-i18n-placeholder="filterPlaceholder" placeholder="Filter list..." />
-  </div>
+  </section>
+
+  <div id="noteIncomplete" class="note-incomplete hidden"></div>
 
   <nav class="tabs" id="tabs">
     <button class="tab active" data-tab="mutual"><span data-i18n="mutual">Mutual</span> <span id="countMutual">0</span></button>

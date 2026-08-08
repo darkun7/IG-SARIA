@@ -53,11 +53,13 @@
   <section id="progress" class="card hidden">
     <div class="bar"><div id="barFill"></div></div>
     <p id="progressText"></p>
+    <p id="reconnectNote" class="hint hidden" data-i18n="reconnected"></p>
     <button id="cancelBtn" class="ghost" data-i18n="cancel">Cancel</button>
   </section>
 
-  <section id="done" class="card hidden">
-    <p data-i18n="analyzingDone"></p>
+  <section id="resumeCard" class="card hidden">
+    <p id="resumeText" data-i18n="reportReady"></p>
+    <button id="viewReportBtn" class="primary big" data-i18n="openDashboard">Open dashboard</button>
   </section>
 
   <p id="status"></p>

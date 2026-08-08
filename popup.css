@@ -110,6 +110,19 @@ button.big {
   margin-top: 8px;
 }
 
+#reconnectNote {
+  margin-top: 10px;
+}
+
+#resumeCard p {
+  margin: 0 0 10px;
+  font-size: 13px;
+}
+
+#viewReportBtn {
+  width: 100%;
+}
+
 .card {
   background: #fff;
   border: 1px solid #dbdbdb;

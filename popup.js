@@ -3,7 +3,7 @@
 
   var activeTab = null;
   var port = null;
-  var scraping = false;
+  var scrapeActive = false;
   var currentUsername = null;
 
   var $ = function (id) { return document.getElementById(id); };
@@ -25,16 +25,113 @@
     return I18n.t(stage === "following" ? "following" : "followers");
   }
 
+  function connectPort() {
+    try { if (port) port.disconnect(); } catch (e) {}
+    port = chrome.runtime.connect({ name: "ig-status" });
+    port.onMessage.addListener(onPortMessage);
+    port.onDisconnect.addListener(function () { port = null; });
+  }
+
+  function showIdle() {
+    scrapeActive = false;
+    $("progress").classList.add("hidden");
+    $("resumeCard").classList.add("hidden");
+    $("actions").classList.remove("hidden");
+  }
+
+  function showProgress(reconnected) {
+    scrapeActive = true;
+    $("actions").classList.add("hidden");
+    $("resumeCard").classList.add("hidden");
+    $("progress").classList.remove("hidden");
+    $("reconnectNote").classList.toggle("hidden", !reconnected);
+  }
+
+  function showReport() {
+    scrapeActive = false;
+    $("actions").classList.add("hidden");
+    $("progress").classList.add("hidden");
+    $("resumeCard").classList.remove("hidden");
+    $("resumeText").textContent = I18n.t("reportReady");
+    $("viewReportBtn").textContent = I18n.t("openDashboard");
+  }
+
+  function setProgressText(stage, count) {
+    $("progressText").textContent = I18n.t("getting", {
+      stage: stageLabel(stage),
+      count: count
+    });
+  }
+
+  function onPortMessage(msg) {
+    if (!msg) return;
+    if (msg.type === "PROGRESS") {
+      var isFollowing = msg.stage === "following";
+      $("barFill").style.width = isFollowing ? "85%" : "40%";
+      setProgressText(msg.stage, msg.count);
+    } else if (msg.type === "STATUS") {
+      if (msg.text === "rateLimited") {
+        $("progressText").textContent = I18n.t("rateLimited");
+      } else if (msg.text === "retryingStage") {
+        $("progressText").textContent = I18n.t("retryingStage");
+      } else if (msg.text === "resuming") {
+        $("progressText").textContent = I18n.t("resuming");
+      }
+    } else if (msg.type === "DONE") {
+      if (msg.resumed) {
+        showReport();
+        setStatus(I18n.t("statusUpdated"));
+      } else {
+        showReport();
+        setStatus(I18n.t("openingDashboard"));
+        chrome.tabs.create({ url: chrome.runtime.getURL("dashboard.html") });
+      }
+    } else if (msg.type === "ERROR") {
+      showIdle();
+      if (msg.message === "Stopped") {
+        setStatus(I18n.t("statusCancelled"));
+      } else {
+        setStatus(I18n.t("statusError", { msg: msg.message }));
+      }
+    }
+  }
+
   async function start() {
     var tabs = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tabs || !tabs[0]) return;
     activeTab = tabs[0];
 
-    if (!activeTab.url || activeTab.url.indexOf("instagram.com") === -1) {
-      setStatus(I18n.t("statusNotOnIg"));
-      return;
+    connectPort();
+
+    var res = await chrome.runtime.sendMessage({ type: "GET_STATUS" });
+    var st = res && res.status;
+
+    var onIg = !!(activeTab.url && activeTab.url.indexOf("instagram.com") !== -1);
+    var p = null;
+    if (onIg) {
+      try {
+        var sr = await chrome.tabs.sendMessage(activeTab.id, { type: "SCAN" });
+        if (sr && sr.ok) p = sr.profile;
+      } catch (e) {}
     }
-    scan();
+
+    if (st && st.active) {
+      showProgress(true);
+      if (st.stage) setProgressText(st.stage, st.count);
+    } else if (st && st.done && p && p.username && st.username === p.username) {
+      renderProfile(p);
+      showReport();
+    } else {
+      showIdle();
+      if (!onIg) {
+        setStatus(I18n.t("statusNotOnIg"));
+      } else if (p) {
+        renderProfile(p);
+        setStatus("");
+      } else {
+        setStatus(I18n.t("statusNotReady"));
+      }
+    }
   }
 
   async function scan() {
@@ -75,49 +172,8 @@
     $("actions").classList.toggle("hidden", big);
   }
 
-  function onPortMessage(msg) {
-    if (msg.type === "PROGRESS") {
-      var isFollowing = msg.stage === "following";
-      $("barFill").style.width = isFollowing ? "85%" : "40%";
-      $("progressText").textContent = I18n.t("getting", {
-        stage: stageLabel(msg.stage),
-        count: msg.count
-      });
-    } else if (msg.type === "DONE") {
-      finishScrape();
-      $("done").classList.remove("hidden");
-      setStatus(I18n.t("openingDashboard"));
-
-      chrome.storage.local.set(
-        {
-          igData: {
-            username: currentUsername,
-            followers: msg.followers,
-            following: msg.following,
-            date: Date.now()
-          }
-        },
-        function () {
-          chrome.tabs.create({ url: chrome.runtime.getURL("dashboard.html") });
-        }
-      );
-    } else if (msg.type === "ERROR") {
-      finishScrape();
-      $("actions").classList.remove("hidden");
-      setStatus(I18n.t("statusError", { msg: msg.message }));
-    }
-  }
-
-  function finishScrape() {
-    scraping = false;
-    $("barFill").style.width = "100%";
-    setTimeout(function () { $("barFill").style.width = "0%"; }, 400);
-    $("progress").classList.add("hidden");
-    if (port) { try { port.disconnect(); } catch (e) {} port = null; }
-  }
-
   async function beginAnalysis() {
-    if (scraping || !activeTab) return;
+    if (scrapeActive || !activeTab) return;
 
     setStatus(I18n.t("scanning"));
     var p = null;
@@ -139,25 +195,21 @@
       return;
     }
 
-    scraping = true;
-    $("actions").classList.add("hidden");
-    $("progress").classList.remove("hidden");
-    $("done").classList.add("hidden");
-
-    port = chrome.tabs.connect(activeTab.id, { name: "ig-port" });
-    port.onMessage.addListener(onPortMessage);
-    port.postMessage({ type: "SCRAPE_ALL" });
+    connectPort();
+    chrome.runtime.sendMessage({
+      type: "SCRAPE",
+      username: p.username,
+      expectedF: p.followers,
+      expectedG: p.following
+    });
+    showProgress(false);
+    setProgressText("followers", 0);
+    setStatus("");
   }
 
   function cancelScrape() {
-    if (port) {
-      try { port.postMessage({ type: "STOP" }); } catch (e) {}
-      try { port.disconnect(); } catch (e) {}
-      port = null;
-    }
-    scraping = false;
-    $("progress").classList.add("hidden");
-    $("actions").classList.remove("hidden");
+    chrome.runtime.sendMessage({ type: "CANCEL" });
+    showIdle();
     setStatus(I18n.t("statusCancelled"));
   }
 
@@ -201,10 +253,19 @@
   });
   $("analyzeBtn").addEventListener("click", beginAnalysis);
   $("cancelBtn").addEventListener("click", cancelScrape);
+  $("viewReportBtn").addEventListener("click", function () {
+    chrome.tabs.create({ url: chrome.runtime.getURL("dashboard.html") });
+  });
 
   window.onLangChanged = function () {
     I18n.applyToDocument();
-    if (activeTab) scan(); else setStatus(I18n.t("statusNotOnIg"));
+    if (activeTab && !scrapeActive) {
+      if (!activeTab.url || activeTab.url.indexOf("instagram.com") === -1) {
+        setStatus(I18n.t("statusNotOnIg"));
+      } else {
+        scan();
+      }
+    }
   };
 
   I18n.load(function () {

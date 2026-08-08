@@ -55,9 +55,46 @@ button:hover {
   filter: brightness(0.95);
 }
 
+button:disabled {
+  opacity: 0.6;
+  cursor: default;
+  filter: none;
+}
+
 button.primary {
   background: linear-gradient(45deg, #10b981, #8b5cf6);
   color: #fff;
+}
+
+.collecting-bar {
+  max-width: 952px;
+  margin: 12px auto 0;
+  padding: 12px 24px;
+  background: #f5f3ff;
+  border: 1px solid #ddd6fe;
+  border-left: 4px solid #8b5cf6;
+  border-radius: 8px;
+}
+
+.collecting-text {
+  font-size: 13px;
+  color: #4c1d95;
+  margin-bottom: 8px;
+}
+
+.collecting-track {
+  height: 6px;
+  background: #e9e4fd;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.collecting-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(45deg, #10b981, #8b5cf6);
+  border-radius: 999px;
+  transition: width 0.3s ease;
 }
 
 .header-actions {
@@ -122,6 +159,19 @@ button.primary {
   max-width: 1000px;
   margin: 8px auto 0;
   padding: 0 24px;
+}
+
+.note-incomplete {
+  max-width: 952px;
+  margin: 12px auto 0;
+  padding: 10px 12px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-left: 4px solid #f59e0b;
+  border-radius: 8px;
+  color: #92400e;
+  font-size: 13px;
+  line-height: 1.4;
 }
 
 .toolbar input {

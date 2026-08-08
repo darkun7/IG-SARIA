@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
   "name": "IG-SARIA",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "Instagram follower/following list tool with a safety check for accounts over 10k followers.",
-  "permissions": ["activeTab", "cookies", "storage"],
+  "permissions": ["activeTab", "cookies", "storage", "alarms"],
   "host_permissions": ["https://www.instagram.com/*"],
   "background": {
     "service_worker": "background.js"

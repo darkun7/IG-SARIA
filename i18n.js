@@ -33,10 +33,15 @@
       statusOpenFirst: "Open an Instagram profile first, or type a username and press Go.",
       statusNotRecommended: "Not recommended: account has more than 10,000 total followers and following.",
       statusCancelled: "Cancelled.",
+      statusUpdated: "Analysis updated.",
       statusEnterValid: "Enter a valid Instagram username.",
       statusCannotReadAuto: "Could not read the profile automatically. Press Go again.",
       reAnalyze: "Re-analyze",
       exportCsv: "Export CSV",
+      continueCollecting: "Continue collecting",
+      resuming: "Collecting remaining accounts...",
+      collectingProgress: "Getting {stage}... {count} of ~{expected}",
+      stillIncomplete: "Still incomplete. You can try continuing again later.",
       mutual: "Mutual",
       notFollowingBack: "Not following back",
       fans: "Fans (not followed)",
@@ -46,7 +51,13 @@
       noAccounts: "No accounts in this view.",
       noData: "No data found. Open the popup on an Instagram profile and click Analyze.",
       analyzedOn: "@{user} - analyzed {date}",
-      footnote: "Scraped {f} followers and {g} following on {date}"
+      footnote: "Scraped {f} followers and {g} following on {date}",
+      reconnected: "Reconnected - analysis is still running.",
+      reportReady: "Your last analysis is ready.",
+      openDashboard: "Open dashboard",
+      rateLimited: "Rate limited by Instagram. Waiting to retry...",
+      retryingStage: "Incomplete data detected. Retrying to fetch remaining accounts...",
+      noteIncomplete: "Note: Instagram may not have returned the full list due to rate limiting or network issues. Loaded {fetched} of ~{expected} accounts."
     },
     id: {
       title: "IG-SARIA",
@@ -79,10 +90,15 @@
       statusOpenFirst: "Buka profil Instagram terlebih dahulu, atau ketik username lalu tekan Buka.",
       statusNotRecommended: "Tidak disarankan: akun memiliki total pengikut dan mengikuti lebih dari 10.000.",
       statusCancelled: "Dibatalkan.",
+      statusUpdated: "Analisis diperbarui.",
       statusEnterValid: "Masukkan username Instagram yang valid.",
       statusCannotReadAuto: "Tidak dapat membaca profil secara otomatis. Tekan Buka lagi.",
       reAnalyze: "Analisis Ulang",
       exportCsv: "Ekspor CSV",
+      continueCollecting: "Lanjutkan Mengumpulkan",
+      resuming: "Mengumpulkan akun yang tersisa...",
+      collectingProgress: "Mengambil {stage}... {count} dari ~{expected}",
+      stillIncomplete: "Masih belum lengkap. Anda dapat mencoba melanjutkan lagi nanti.",
       mutual: "Saling Mengikuti",
       notFollowingBack: "Tidak Follow Balik",
       fans: "Penggemar",
@@ -92,7 +108,13 @@
       noAccounts: "Tidak ada akun di tampilan ini.",
       noData: "Tidak ada data. Buka popup di profil Instagram lalu klik Analisis.",
       analyzedOn: "@{user} - dianalisis {date}",
-      footnote: "Mengambil {f} pengikut dan {g} mengikuti pada {date}"
+      footnote: "Mengambil {f} pengikut dan {g} mengikuti pada {date}",
+      reconnected: "Terhubung kembali - analisis masih berjalan.",
+      reportReady: "Analisis terakhir Anda sudah siap.",
+      openDashboard: "Buka dashboard",
+      rateLimited: "Dibatasi Instagram. Menunggu untuk mencoba lagi...",
+      retryingStage: "Data belum lengkap. Mencoba mengambil akun yang tersisa...",
+      noteIncomplete: "Catatan: Instagram mungkin tidak mengembalikan daftar lengkap karena batas akses atau masalah jaringan. Dimuat {fetched} dari ~{expected} akun."
     }
   };
 
