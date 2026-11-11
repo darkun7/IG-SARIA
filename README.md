@@ -5,15 +5,16 @@ A Chrome extension that analyzes an Instagram profile's **followers** and **foll
 ## Features
 
 - Enter a username (or URL) and jump straight to the profile.
-- **One button** — "Analyze Followers & Following" scrapes both lists automatically using Instagram's internal API (your logged-in session), no scrolling required.
+- **One button**: "Analyze Followers & Following" scrapes both lists automatically using Instagram's internal API (your logged-in session), no scrolling required.
 - **Safety check:** if the account has more than **10,000 followers**, the extension shows a "Not recommended" warning and blocks scraping.
 - Opens a **dashboard recap** with:
-  - **Mutual** — people you follow who follow you back
-  - **Not following back** — accounts you follow that don't follow you back
-  - **Fans** — followers you don't follow back
+  - **Mutual**: people you follow who follow you back
+  - **Not following back**: accounts you follow that don't follow you back
+  - **Not following back**: followers you don't follow back
   - Full follower / following lists
 - Click any account to open their Instagram profile in a new tab.
-- Filter the list live, and export the current view as CSV.
+- Filter the list live, and export the current view as CSV or a full report as HTML.
+- Upload Instagram exports directly in the dashboard: each Followers and Following field accepts JSON, HTML, or ZIP. ZIP exports are unpacked in memory and the matching list is selected automatically.
 - Progress indicator while collecting; shows if you're not logged in (Instagram hides lists for logged-out users).
 
 ## Install (unpacked extension)
@@ -30,7 +31,9 @@ A Chrome extension that analyzes an Instagram profile's **followers** and **foll
 2. Open a profile page (or type a username into the popup and press **Go**).
 3. Click the IG-SARIA icon and press **Analyze Followers & Following**.
 4. Wait while it collects both lists (progress is shown in the popup).
-5. The **dashboard** opens in a new tab with the full recap — click any account to open its profile.
+5. The **dashboard** opens in a new tab with the full recap. Click any account to open its profile.
+
+You can also use the dashboard as a local file comparator. Upload the Followers export and Following export in the upload section near the top. The files stay in the browser; no upload to a server is needed.
 
 ## Build
 

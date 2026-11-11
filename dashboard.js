@@ -6,6 +6,9 @@
   var activeTab = "mutual";
   var port = null;
   var resuming = false;
+  var uploadState = { followers: null, following: null };
+  var uploadMode = "zip";
+  var theme = "light";
 
   var TAB_LABEL_KEYS = {
     mutual: "mutual",
@@ -15,36 +18,58 @@
     allg: "allFollowing"
   };
 
+  var REPORT_CSS = [
+    "*{box-sizing:border-box}",
+    "body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:14px;color:#262626;background:#fafafa}",
+    "header{padding:20px 24px;background:#fff;border-bottom:1px solid #dbdbdb}",
+    "h1{margin:0;font-size:22px;background:linear-gradient(45deg,#10b981,#8b5cf6);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}",
+    ".subtitle{margin:2px 0 0;font-size:12px;color:#8e8e8e}",
+    ".summary{display:flex;flex-wrap:wrap;gap:12px;max-width:1000px;margin:0 auto;padding:20px 24px 8px}",
+    ".stat{flex:1;min-width:130px;text-align:center;padding:14px 8px;background:#fff;border:1px solid #dbdbdb;border-radius:10px}",
+    ".stat b{display:block;font-size:24px}",
+    ".stat span{font-size:12px;color:#8e8e8e}",
+    ".stat.good b{color:#2e7d32}",
+    ".stat.bad b{color:#c62828}",
+    ".stat.warn b{color:#e65100}",
+    ".content{max-width:1000px;margin:0 auto;padding:12px 24px 40px}",
+    "section{margin-top:24px}",
+    "h2{font-size:16px;margin:0 0 10px}",
+    ".count{font-size:12px;color:#8e8e8e;font-weight:400}",
+    ".accounts{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px}",
+    ".accounts li{background:#fff;border:1px solid #dbdbdb;border-radius:8px;overflow:hidden}",
+    ".accounts a{display:block;padding:10px 12px;text-decoration:none;color:#262626;font-weight:600}",
+    ".accounts a:hover{background:#f8f9fa;color:#7c3aed}",
+    ".empty{color:#8e8e8e}",
+    "footer{text-align:center;padding:16px;color:#8e8e8e;font-size:12px}"
+  ].join("\n");
+
   var $ = function (id) { return document.getElementById(id); };
 
   function fmt(n) {
     return n >= 1000 ? n.toLocaleString() : String(n);
   }
 
+  function applyTheme(nextTheme) {
+    theme = nextTheme === "dark" ? "dark" : "light";
+    document.body.classList.toggle("dark", theme === "dark");
+    var button = $("themeToggle");
+    if (button) {
+      button.textContent = I18n.t(theme === "dark" ? "themeLight" : "themeDark");
+      button.setAttribute("title", I18n.t("themeToggle"));
+    }
+  }
+
+  function toggleTheme() {
+    var nextTheme = theme === "dark" ? "light" : "dark";
+    chrome.storage.local.set({ igTheme: nextTheme }, function () {
+      applyTheme(nextTheme);
+    });
+  }
+
   function buildViews() {
     var followers = data.followers || [];
     var following = data.following || [];
-    var fSet = new Set(followers);
-    var gSet = new Set(following);
-
-    var mutual = [];
-    var fans = [];
-    followers.forEach(function (u) {
-      if (gSet.has(u)) mutual.push(u); else fans.push(u);
-    });
-
-    var notBack = [];
-    following.forEach(function (u) {
-      if (!fSet.has(u)) notBack.push(u);
-    });
-
-    views = {
-      mutual: mutual.sort(function (a, b) { return a.localeCompare(b); }),
-      notback: notBack.sort(function (a, b) { return a.localeCompare(b); }),
-      fans: fans.sort(function (a, b) { return a.localeCompare(b); }),
-      allf: followers.slice().sort(function (a, b) { return a.localeCompare(b); }),
-      allg: following.slice().sort(function (a, b) { return a.localeCompare(b); })
-    };
+    views = IGSariaComparison.compareLists(followers, following);
   }
 
   function renderSummary() {
@@ -127,9 +152,135 @@
   }
 
   function renderNoData() {
+    ["stFollowers", "stFollowing", "stMutual", "stNotBack", "stFans",
+      "countMutual", "countNotBack", "countFans", "countAllF", "countAllG"].forEach(function (id) {
+      $(id).textContent = "0";
+    });
+    $("noteIncomplete").classList.add("hidden");
     $("empty").classList.remove("hidden");
     $("empty").textContent = I18n.t("noData");
     $("list").innerHTML = "";
+  }
+
+  function setUploadStatus(role, text, kind) {
+    var ids = {
+      followers: "followersFileStatus",
+      following: "followingFileStatus",
+      zip: "zipFileStatus"
+    };
+    var el = $(ids[role]);
+    el.textContent = text;
+    el.className = "upload-status" + (kind ? " " + kind : "");
+  }
+
+  function setUploadMessage(text, kind) {
+    var el = $("uploadStatus");
+    el.textContent = text || "";
+    el.className = "upload-message" + (kind ? " " + kind : "");
+  }
+
+  function applyImportedLists() {
+    data = {
+      username: "export",
+      followers: uploadState.followers,
+      following: uploadState.following,
+      date: Date.now()
+    };
+    buildViews();
+    render();
+    setUploadMessage(I18n.t("uploadReady"), "ready");
+  }
+
+  function resetUploads() {
+    uploadState = { followers: null, following: null };
+    ["followersFile", "followingFile", "zipFile"].forEach(function (id) {
+      $(id).value = "";
+    });
+    ["followers", "following", "zip"].forEach(function (role) {
+      setUploadStatus(role, I18n.t("noFileChosen"));
+    });
+    data = null;
+    views = {};
+    renderNoData();
+    setUploadMessage("");
+  }
+
+  function syncUploadMode(mode) {
+    uploadMode = mode;
+    $("pairUploadGrid").classList.toggle("hidden", mode === "zip");
+    $("zipUploadCard").classList.toggle("hidden", mode !== "zip");
+    $("followersFile").accept = mode === "html" ? ".html,.htm,text/html" : ".json,application/json";
+    $("followingFile").accept = mode === "html" ? ".html,.htm,text/html" : ".json,application/json";
+    resetUploads();
+  }
+
+  async function handleUpload(role, input) {
+    var file = input.files && input.files[0];
+    if (!file) {
+      uploadState[role] = null;
+      setUploadStatus(role, I18n.t("noFileChosen"));
+      if (!uploadState.followers || !uploadState.following) {
+        data = null;
+        views = {};
+        renderNoData();
+        setUploadMessage(I18n.t("uploadBothFiles"));
+      }
+      return;
+    }
+
+    setUploadStatus(role, I18n.t("readingFile"), "");
+    setUploadMessage("");
+    try {
+      var result = await IGSariaImport.parseFile(file, role);
+      uploadState[role] = result.usernames;
+      setUploadStatus(role, file.name + " (" + result.usernames.length.toLocaleString() + ")", "ready");
+
+      if (!uploadState.followers || !uploadState.following) {
+        data = null;
+        views = {};
+        renderNoData();
+        setUploadMessage(I18n.t("uploadBothFiles"));
+        return;
+      }
+
+      applyImportedLists();
+    } catch (error) {
+      uploadState[role] = null;
+      setUploadStatus(role, error && error.message ? error.message : I18n.t("uploadError"), "error");
+      setUploadMessage(I18n.t("uploadError"), "error");
+    }
+  }
+
+  async function handleZipUpload(input) {
+    var file = input.files && input.files[0];
+    if (!file) {
+      uploadState = { followers: null, following: null };
+      setUploadStatus("zip", I18n.t("noFileChosen"));
+      data = null;
+      views = {};
+      renderNoData();
+      return;
+    }
+
+    setUploadStatus("zip", I18n.t("readingFile"), "");
+    setUploadMessage("");
+    try {
+      var buffer = await file.arrayBuffer();
+      var results = await Promise.all([
+        IGSariaImport.parseFileBuffer(buffer, file.name, "followers"),
+        IGSariaImport.parseFileBuffer(buffer, file.name, "following")
+      ]);
+      uploadState.followers = results[0].usernames;
+      uploadState.following = results[1].usernames;
+      setUploadStatus("zip", file.name + " (" +
+        uploadState.followers.length.toLocaleString() + " / " +
+        uploadState.following.length.toLocaleString() + ")", "ready");
+      applyImportedLists();
+    } catch (error) {
+      uploadState = { followers: null, following: null };
+      setUploadStatus("zip", error && error.message ? error.message : I18n.t("uploadError"), "error");
+      setUploadMessage(I18n.t("uploadError"), "error");
+    }
   }
 
   function activateTab(name) {
@@ -165,6 +316,88 @@
     var a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = (data.username || "ig") + "-" + activeTab + ".csv";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function accountListHtml(items) {
+    if (!items.length) {
+      return '<p class="empty">' + escapeHtml(I18n.t("noAccounts")) + "</p>";
+    }
+    var out = '<ul class="accounts">';
+    items.forEach(function (u) {
+      out += '<li><a href="https://www.instagram.com/' + encodeURIComponent(u) +
+        '/" target="_blank" rel="noopener">@' + escapeHtml(u) + "</a></li>";
+    });
+    return out + "</ul>";
+  }
+
+  function sectionHtml(title, items) {
+    return "<section><h2>" + escapeHtml(title) +
+      ' <span class="count">' + items.length + "</span></h2>" +
+      accountListHtml(items) + "</section>";
+  }
+
+  function buildHtmlReport() {
+    var f = data.followers || [];
+    var g = data.following || [];
+
+    var subtitle = I18n.t("analyzedOn", {
+      user: data.username || "?",
+      date: new Date(data.date).toLocaleString()
+    });
+    var footnote = I18n.t("footnote", {
+      f: f.length,
+      g: g.length,
+      date: new Date(data.date).toDateString()
+    });
+
+    var stats = [
+      { cls: "", value: f.length, label: I18n.t("followers") },
+      { cls: "", value: g.length, label: I18n.t("following") },
+      { cls: "good", value: views.mutual.length, label: I18n.t("mutual") },
+      { cls: "bad", value: views.notback.length, label: I18n.t("notFollowingBack") },
+      { cls: "warn", value: views.fans.length, label: I18n.t("fans") }
+    ];
+    var statsHtml = "";
+    stats.forEach(function (s) {
+      statsHtml += '<div class="stat ' + s.cls + '"><b>' + s.value +
+        "</b><span>" + escapeHtml(s.label) + "</span></div>";
+    });
+
+    var sectionsHtml =
+      sectionHtml(I18n.t("mutual"), views.mutual) +
+      sectionHtml(I18n.t("notFollowingBack"), views.notback) +
+      sectionHtml(I18n.t("fans"), views.fans) +
+      sectionHtml(I18n.t("allFollowers"), views.allf) +
+      sectionHtml(I18n.t("allFollowing"), views.allg);
+
+    return "<!DOCTYPE html>\n" +
+      '<html lang="' + I18n.lang + '">\n<head>\n<meta charset="utf-8" />\n' +
+      '<meta name="viewport" content="width=device-width, initial-scale=1" />\n' +
+      "<title>" + escapeHtml(I18n.t("title")) + " - @" + escapeHtml(data.username || "?") + "</title>\n" +
+      "<style>\n" + REPORT_CSS + "\n</style>\n</head>\n<body>\n" +
+      "<header><h1>" + escapeHtml(I18n.t("title")) + "</h1>" +
+      '<p class="subtitle">' + escapeHtml(subtitle) + "</p></header>\n" +
+      '<section class="summary">' + statsHtml + "</section>\n" +
+      '<main class="content">' + sectionsHtml + "</main>\n" +
+      "<footer><p>" + escapeHtml(footnote) + "</p></footer>\n" +
+      "</body>\n</html>\n";
+  }
+
+  function exportHtml() {
+    var blob = new Blob([buildHtmlReport()], { type: "text/html;charset=utf-8" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = (data.username || "ig") + "-report.html";
     a.click();
     URL.revokeObjectURL(a.href);
   }
@@ -247,7 +480,16 @@
     }
 
     $("searchInput").addEventListener("input", renderList);
+    $("followersFile").addEventListener("change", function () { handleUpload("followers", this); });
+    $("followingFile").addEventListener("change", function () { handleUpload("following", this); });
+    $("zipFile").addEventListener("change", function () { handleZipUpload(this); });
+    var formatInputs = document.querySelectorAll("input[name='uploadFormat']");
+    for (var f = 0; f < formatInputs.length; f++) {
+      formatInputs[f].addEventListener("change", function () { syncUploadMode(this.value); });
+    }
+    syncUploadMode(uploadMode);
     $("exportBtn").addEventListener("click", exportCsv);
+    $("exportHtmlBtn").addEventListener("click", exportHtml);
     $("continueBtn").addEventListener("click", startResume);
     $("refreshBtn").addEventListener("click", function () {
       chrome.tabs.create({
@@ -259,15 +501,18 @@
 
     window.onLangChanged = function () {
       I18n.applyToDocument();
+      applyTheme(theme);
       updateExportLabel();
       if (data) render(); else renderNoData();
     };
 
     I18n.load(function () {
       I18n.applyToDocument();
-      I18n.bindLangSelect($("langSelect"));
+      I18n.bindLangButtons($("langIdBtn"), $("langEnBtn"));
+      $("themeToggle").addEventListener("click", toggleTheme);
 
-      chrome.storage.local.get("igData", function (res) {
+      chrome.storage.local.get(["igData", "igTheme"], function (res) {
+        applyTheme(res.igTheme || "light");
         data = res.igData || null;
         if (!data) { renderNoData(); updateExportLabel(); return; }
         buildViews();

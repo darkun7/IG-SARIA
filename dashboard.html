@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <title>IG-SARIA Dashboard</title>
+  <link rel="icon" href="favicon.ico" sizes="any" />
   <link rel="stylesheet" href="dashboard.css" />
 </head>
 <body>
@@ -12,9 +13,14 @@
       <p id="subtitle"></p>
     </div>
     <div class="header-actions">
-      <select id="langSelect" class="lang-select" title="Language"></select>
+      <div class="lang-buttons" role="group" aria-label="Language">
+        <button id="langIdBtn" class="lang-button" type="button" aria-pressed="false">ID</button>
+        <button id="langEnBtn" class="lang-button" type="button" aria-pressed="false">EN</button>
+      </div>
+      <button id="themeToggle" class="theme-toggle" type="button" data-i18n="themeDark" data-i18n-title="themeToggle">Dark</button>
       <button id="refreshBtn" data-i18n="reAnalyze">Re-analyze</button>
       <button id="continueBtn" class="hidden" data-i18n="continueCollecting">Continue collecting</button>
+      <button id="exportHtmlBtn" data-i18n="exportHtml">Export HTML</button>
       <button id="exportBtn" class="primary">Export CSV</button>
     </div>
   </header>
@@ -22,6 +28,45 @@
   <section id="collectingBar" class="collecting-bar hidden">
     <div class="collecting-text" id="collectingText"></div>
     <div class="collecting-track"><div class="collecting-fill" id="collectingFill"></div></div>
+  </section>
+
+  <section class="import-panel" aria-labelledby="importTitle">
+    <div class="import-heading">
+      <div>
+        <h2 id="importTitle" data-i18n="uploadTitle">Compare export files</h2>
+        <p data-i18n="uploadDescription">Upload your Instagram export files to compare followers and following locally.</p>
+      </div>
+      <span class="format-badge" data-i18n="supportedFormats">JSON / HTML / ZIP</span>
+    </div>
+    <fieldset class="format-picker">
+      <legend data-i18n="fileFormat">File format</legend>
+      <label><input type="radio" name="uploadFormat" value="zip" checked /> ZIP <span data-i18n="zipAutoExtract">(one file, auto-extract)</span></label>
+      <label><input type="radio" name="uploadFormat" value="json" /> JSON</label>
+      <label><input type="radio" name="uploadFormat" value="html" /> HTML</label>
+    </fieldset>
+    <div id="pairUploadGrid" class="upload-grid">
+      <label class="upload-card" for="followersFile">
+        <span class="upload-label" data-i18n="followersFile">Followers file</span>
+        <span class="upload-help" data-i18n="pairUploadHelp">Upload the followers export</span>
+        <input id="followersFile" type="file" accept=".json,application/json" />
+        <span id="followersFileStatus" class="upload-status" aria-live="polite" data-i18n="noFileChosen">No file selected</span>
+      </label>
+      <label class="upload-card" for="followingFile">
+        <span class="upload-label" data-i18n="followingFile">Following file</span>
+        <span class="upload-help" data-i18n="pairUploadHelp">Upload the following export</span>
+        <input id="followingFile" type="file" accept=".json,application/json" />
+        <span id="followingFileStatus" class="upload-status" aria-live="polite" data-i18n="noFileChosen">No file selected</span>
+      </label>
+    </div>
+    <div id="zipUploadCard" class="upload-grid hidden">
+      <label class="upload-card" for="zipFile">
+        <span class="upload-label" data-i18n="zipFile">Instagram export ZIP</span>
+        <span class="upload-help" data-i18n="zipUploadHelp">One ZIP is enough; followers and following are extracted automatically.</span>
+        <input id="zipFile" type="file" accept=".zip,application/zip" />
+        <span id="zipFileStatus" class="upload-status" aria-live="polite" data-i18n="noFileChosen">No file selected</span>
+      </label>
+    </div>
+    <p id="uploadStatus" class="upload-message" role="status"></p>
   </section>
 
   <section class="summary">
@@ -43,7 +88,7 @@
     </div>
     <div class="stat warn">
       <b id="stFans">0</b>
-      <span data-i18n="fans">Fans (not followed)</span>
+      <span data-i18n="fans">Not following back</span>
     </div>
   </section>
 
@@ -56,7 +101,7 @@
   <nav class="tabs" id="tabs">
     <button class="tab active" data-tab="mutual"><span data-i18n="mutual">Mutual</span> <span id="countMutual">0</span></button>
     <button class="tab" data-tab="notback"><span data-i18n="notFollowingBack">Not following back</span> <span id="countNotBack">0</span></button>
-    <button class="tab" data-tab="fans"><span data-i18n="fans">Fans</span> <span id="countFans">0</span></button>
+    <button class="tab" data-tab="fans"><span data-i18n="fans">Not following back</span> <span id="countFans">0</span></button>
     <button class="tab" data-tab="allf"><span data-i18n="allFollowers">All followers</span> <span id="countAllF">0</span></button>
     <button class="tab" data-tab="allg"><span data-i18n="allFollowing">All following</span> <span id="countAllG">0</span></button>
   </nav>
@@ -67,9 +112,15 @@
   </div>
 
   <footer>
+    <a class="support-link footer-support" href="https://ganknow.com/0x5879" target="_blank" rel="noopener noreferrer" aria-label="Support Ganknow">
+      <img class="support-logo" src="https://play-lh.googleusercontent.com/auYuei2J0Qk5IJeL-aSv-SNd2Dq8i8DUBwfnInCbdqhdXucyfEenat1J-6KfSuTAK6-GNfX7RFwjbOgZTto0" alt="Ganknow" loading="lazy" />
+      <span>Support</span>
+    </a>
     <p id="footnote"></p>
   </footer>
 
+  <script src="comparison.js"></script>
+  <script src="file-import.js"></script>
   <script src="i18n.js"></script>
   <script src="dashboard.js"></script>
 </body>

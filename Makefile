@@ -3,7 +3,7 @@ VERSION   := $(shell node -p "require('./manifest.json').version" 2>/dev/null ||
 DIST      := dist
 ZIP       := $(DIST)/$(NAME)-$(VERSION).zip
 
-SRC       := manifest.json background.js content.js i18n.js popup.html popup.css popup.js dashboard.html dashboard.css dashboard.js logo-saria.png favicon.ico README.md
+SRC       := manifest.json background.js content.js comparison.js file-import.js i18n.js popup.html popup.css popup.js dashboard.html dashboard.css dashboard.js logo-saria.png favicon.ico README.md
 
 .PHONY: all build check clean distclean
 
@@ -16,10 +16,14 @@ check:
 	@echo "==> Checking JS syntax"
 	node --check background.js
 	node --check content.js
+	node --check comparison.js
+	node --check file-import.js
 	node --check i18n.js
 	node --check popup.js
 	node --check dashboard.js
 	@echo "    JS OK"
+	@echo "==> Running tests"
+	node --test test/*.test.js
 
 # Build distributable zip into dist/
 build: check

@@ -38,13 +38,17 @@
       statusCannotReadAuto: "Could not read the profile automatically. Press Go again.",
       reAnalyze: "Re-analyze",
       exportCsv: "Export CSV",
+      exportHtml: "Export HTML",
       continueCollecting: "Continue collecting",
+      themeDark: "Dark",
+      themeLight: "Light",
+      themeToggle: "Toggle theme",
       resuming: "Collecting remaining accounts...",
       collectingProgress: "Getting {stage}... {count} of ~{expected}",
       stillIncomplete: "Still incomplete. You can try continuing again later.",
       mutual: "Mutual",
       notFollowingBack: "Not following back",
-      fans: "Fans (not followed)",
+      fans: "Not following back",
       allFollowers: "All followers",
       allFollowing: "All following",
       filterPlaceholder: "Filter list...",
@@ -57,7 +61,22 @@
       openDashboard: "Open dashboard",
       rateLimited: "Rate limited by Instagram. Waiting to retry...",
       retryingStage: "Incomplete data detected. Retrying to fetch remaining accounts...",
-      noteIncomplete: "Note: Instagram may not have returned the full list due to rate limiting or network issues. Loaded {fetched} of ~{expected} accounts."
+      noteIncomplete: "Note: Instagram may not have returned the full list due to rate limiting or network issues. Loaded {fetched} of ~{expected} accounts.",
+      uploadTitle: "Compare export files",
+      uploadDescription: "Upload your Instagram export files to compare followers and following locally.",
+      supportedFormats: "JSON / HTML / ZIP",
+      fileFormat: "File format",
+      zipAutoExtract: "(one file, auto-extract)",
+      followersFile: "Followers file",
+      followingFile: "Following file",
+      pairUploadHelp: "Upload the matching list export",
+      zipFile: "Instagram export ZIP",
+      zipUploadHelp: "One ZIP is enough; followers and following are extracted automatically.",
+      noFileChosen: "No file selected",
+      readingFile: "Reading file...",
+      uploadBothFiles: "Upload both files to compare the lists.",
+      uploadReady: "Files loaded. The comparison below is ready.",
+      uploadError: "Could not read this file. Check that it is a valid Instagram export."
     },
     id: {
       title: "IG-SARIA",
@@ -95,13 +114,17 @@
       statusCannotReadAuto: "Tidak dapat membaca profil secara otomatis. Tekan Buka lagi.",
       reAnalyze: "Analisis Ulang",
       exportCsv: "Ekspor CSV",
+      exportHtml: "Ekspor HTML",
       continueCollecting: "Lanjutkan Mengumpulkan",
+      themeDark: "Gelap",
+      themeLight: "Terang",
+      themeToggle: "Ubah tema",
       resuming: "Mengumpulkan akun yang tersisa...",
       collectingProgress: "Mengambil {stage}... {count} dari ~{expected}",
       stillIncomplete: "Masih belum lengkap. Anda dapat mencoba melanjutkan lagi nanti.",
       mutual: "Saling Mengikuti",
       notFollowingBack: "Tidak Follow Balik",
-      fans: "Penggemar",
+      fans: "Tidak Follow Balik",
       allFollowers: "Semua Pengikut",
       allFollowing: "Semua Mengikuti",
       filterPlaceholder: "Filter daftar...",
@@ -114,7 +137,22 @@
       openDashboard: "Buka dashboard",
       rateLimited: "Dibatasi Instagram. Menunggu untuk mencoba lagi...",
       retryingStage: "Data belum lengkap. Mencoba mengambil akun yang tersisa...",
-      noteIncomplete: "Catatan: Instagram mungkin tidak mengembalikan daftar lengkap karena batas akses atau masalah jaringan. Dimuat {fetched} dari ~{expected} akun."
+      noteIncomplete: "Catatan: Instagram mungkin tidak mengembalikan daftar lengkap karena batas akses atau masalah jaringan. Dimuat {fetched} dari ~{expected} akun.",
+      uploadTitle: "Bandingkan file ekspor",
+      uploadDescription: "Upload file ekspor Instagram untuk membandingkan pengikut dan yang diikuti secara lokal.",
+      supportedFormats: "JSON / HTML / ZIP",
+      fileFormat: "Format file",
+      zipAutoExtract: "(satu file, ekstrak otomatis)",
+      followersFile: "File followers",
+      followingFile: "File following",
+      pairUploadHelp: "Upload file ekspor yang sesuai",
+      zipFile: "ZIP ekspor Instagram",
+      zipUploadHelp: "Satu ZIP cukup; followers dan following akan diekstrak otomatis.",
+      noFileChosen: "Belum ada file dipilih",
+      readingFile: "Membaca file...",
+      uploadBothFiles: "Upload kedua file untuk membandingkan daftar.",
+      uploadReady: "File berhasil dimuat. Hasil perbandingan siap.",
+      uploadError: "File tidak dapat dibaca. Pastikan ini ekspor Instagram yang valid."
     }
   };
 
@@ -171,6 +209,31 @@
     };
   }
 
+  function bindLangButtons(idButton, enButton) {
+    function updateState() {
+      var idActive = currentLang === "id";
+      idButton.classList.toggle("active", idActive);
+      enButton.classList.toggle("active", !idActive);
+      idButton.setAttribute("aria-pressed", String(idActive));
+      enButton.setAttribute("aria-pressed", String(!idActive));
+    }
+
+    function changeLanguage(nextLang) {
+      var obj = {};
+      obj[LANG_KEY] = nextLang;
+      chrome.storage.local.set(obj, function () {
+        currentLang = nextLang;
+        updateState();
+        applyToDocument();
+        if (window.onLangChanged) window.onLangChanged();
+      });
+    }
+
+    idButton.onclick = function () { changeLanguage("id"); };
+    enButton.onclick = function () { changeLanguage("en"); };
+    updateState();
+  }
+
   function load(cb) {
     chrome.storage.local.get(LANG_KEY, function (res) {
       var v = res[LANG_KEY];
@@ -183,6 +246,7 @@
     t: t,
     applyToDocument: applyToDocument,
     bindLangSelect: bindLangSelect,
+    bindLangButtons: bindLangButtons,
     load: load,
     get lang() { return currentLang; }
   };
