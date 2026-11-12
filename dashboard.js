@@ -2,6 +2,8 @@
   "use strict";
 
   var data = null;
+  var savedProfiles = {};
+  var activeProfileKey = null;
   var views = {};
   var activeTab = "mutual";
   var port = null;
@@ -47,6 +49,50 @@
 
   function fmt(n) {
     return n >= 1000 ? n.toLocaleString() : String(n);
+  }
+
+  function populateSavedProfiles() {
+    var select = $("savedProfileSelect");
+    if (!select) return;
+    select.innerHTML = "";
+
+    var keys = Object.keys(savedProfiles).sort(function (a, b) {
+      var aDate = savedProfiles[a].collectedAt || savedProfiles[a].date || 0;
+      var bDate = savedProfiles[b].collectedAt || savedProfiles[b].date || 0;
+      return bDate - aDate;
+    });
+
+    if (!keys.length) {
+      var empty = document.createElement("option");
+      empty.value = "";
+      empty.textContent = I18n.t("noSavedProfiles");
+      select.appendChild(empty);
+      return;
+    }
+
+    keys.forEach(function (key) {
+      var profile = savedProfiles[key];
+      var option = document.createElement("option");
+      var collectedAt = profile.collectedAt || profile.date;
+      option.value = key;
+      option.textContent = "@" + (profile.username || key) + (collectedAt ? " · " + new Date(collectedAt).toLocaleDateString() : "");
+      option.selected = key === activeProfileKey;
+      select.appendChild(option);
+    });
+  }
+
+  function selectSavedProfile(key) {
+    if (!key) return;
+    IGSariaStorage.activateProfile(key, function (profile, result) {
+      if (!profile) return;
+      savedProfiles = result.profiles;
+      activeProfileKey = key;
+      data = profile;
+      resuming = false;
+      buildViews();
+      populateSavedProfiles();
+      render();
+    });
   }
 
   function applyTheme(nextTheme) {
@@ -128,7 +174,7 @@
       date: new Date(data.date).toDateString()
     });
 
-    if (data.incomplete) {
+    if (needsMoreData()) {
       var expected = Math.max(data.expectedF || 0, data.expectedG || 0);
       var got = Math.max((data.followers || []).length, (data.following || []).length);
       $("noteIncomplete").textContent = I18n.t("noteIncomplete", {
@@ -141,6 +187,13 @@
       $("noteIncomplete").classList.add("hidden");
       $("continueBtn").classList.add("hidden");
     }
+  }
+
+  function needsMoreData() {
+    if (!data) return false;
+    var followersNeedMore = data.expectedF != null && (data.followers || []).length < data.expectedF;
+    var followingNeedMore = data.expectedG != null && (data.following || []).length < data.expectedG;
+    return !!(data.incomplete || followersNeedMore || followingNeedMore);
   }
 
   function render() {
@@ -427,9 +480,12 @@
         $("collectingBar").classList.add("hidden");
         $("continueBtn").classList.remove("hidden");
         $("continueBtn").disabled = false;
-        chrome.storage.local.get("igData", function (res) {
-          if (res.igData) {
-            data = res.igData;
+        IGSariaStorage.readProfiles(function (result) {
+          savedProfiles = result.profiles;
+          activeProfileKey = result.active;
+          data = savedProfiles[activeProfileKey] || null;
+          populateSavedProfiles();
+          if (data) {
             buildViews();
             render();
             if (data.incomplete) {
@@ -461,14 +517,79 @@
     }
   }
 
+  function readCurrentInstagramProfile(callback) {
+    if (!data || !data.username || !chrome.tabs || !chrome.tabs.query) {
+      callback(null);
+      return;
+    }
+
+    chrome.tabs.query({ url: ["https://www.instagram.com/*"] }, function (tabs) {
+      var wanted = IGSariaStorage.profileKey(data.username);
+      var candidate = null;
+      for (var i = 0; i < tabs.length; i++) {
+        var match = String(tabs[i].url || "").match(/instagram\.com\/([A-Za-z0-9._]+)/i);
+        if (match && IGSariaStorage.profileKey(match[1]) === wanted) {
+          candidate = tabs[i];
+          break;
+        }
+      }
+      if (!candidate) {
+        callback(null);
+        return;
+      }
+
+      chrome.tabs.sendMessage(candidate.id, { type: "SCAN" }, function (response) {
+        if (chrome.runtime.lastError || !response || !response.ok) {
+          callback(null);
+          return;
+        }
+        callback(response.profile || null);
+      });
+    });
+  }
+
+  function updateResumeTargets(profile, callback) {
+    if (!profile || IGSariaStorage.profileKey(profile.username) !== activeProfileKey) {
+      callback({});
+      return;
+    }
+
+    var targets = {
+      username: profile.username,
+      expectedF: profile.followersApproximate ? profile.followersTarget : profile.followers,
+      expectedG: profile.followingApproximate ? profile.followingTarget : profile.following,
+      expectedFApproximate: !!profile.followersApproximate,
+      expectedGApproximate: !!profile.followingApproximate
+    };
+    data.expectedF = targets.expectedF;
+    data.expectedG = targets.expectedG;
+    data.expectedFApproximate = targets.expectedFApproximate;
+    data.expectedGApproximate = targets.expectedGApproximate;
+    savedProfiles[activeProfileKey] = data;
+    IGSariaStorage.saveProfile(data, function () { callback(targets); });
+  }
+
   function startResume() {
     resuming = true;
     $("continueBtn").disabled = true;
     $("collectingBar").classList.remove("hidden");
     $("collectingFill").style.width = "0%";
     $("collectingText").textContent = I18n.t("resuming");
-    connectPort();
-    chrome.runtime.sendMessage({ type: "RESUME" });
+    var resume = function (targets) {
+      connectPort();
+      var message = { type: "RESUME" };
+      for (var key in targets) message[key] = targets[key];
+      chrome.runtime.sendMessage(message);
+    };
+    if (activeProfileKey) {
+      IGSariaStorage.activateProfile(activeProfileKey, function () {
+        readCurrentInstagramProfile(function (profile) {
+          updateResumeTargets(profile, resume);
+        });
+      });
+    } else {
+      resume({});
+    }
   }
 
   function init() {
@@ -480,6 +601,9 @@
     }
 
     $("searchInput").addEventListener("input", renderList);
+    $("savedProfileSelect").addEventListener("change", function () {
+      selectSavedProfile(this.value);
+    });
     $("followersFile").addEventListener("change", function () { handleUpload("followers", this); });
     $("followingFile").addEventListener("change", function () { handleUpload("following", this); });
     $("zipFile").addEventListener("change", function () { handleZipUpload(this); });
@@ -492,6 +616,10 @@
     $("exportHtmlBtn").addEventListener("click", exportHtml);
     $("continueBtn").addEventListener("click", startResume);
     $("refreshBtn").addEventListener("click", function () {
+      if (needsMoreData()) {
+        if (!resuming) startResume();
+        return;
+      }
       chrome.tabs.create({
         url: "https://www.instagram.com/" + ((data && data.username) || "") + "/"
       });
@@ -511,12 +639,17 @@
       I18n.bindLangButtons($("langIdBtn"), $("langEnBtn"));
       $("themeToggle").addEventListener("click", toggleTheme);
 
-      chrome.storage.local.get(["igData", "igTheme"], function (res) {
+      chrome.storage.local.get("igTheme", function (res) {
         applyTheme(res.igTheme || "light");
-        data = res.igData || null;
-        if (!data) { renderNoData(); updateExportLabel(); return; }
-        buildViews();
-        render();
+        IGSariaStorage.readProfiles(function (result) {
+          savedProfiles = result.profiles;
+          activeProfileKey = result.active;
+          data = savedProfiles[activeProfileKey] || null;
+          populateSavedProfiles();
+          if (!data) { renderNoData(); updateExportLabel(); return; }
+          buildViews();
+          render();
+        });
       });
     });
   }

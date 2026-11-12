@@ -17,10 +17,26 @@
     return num;
   }
 
+  function isApproximateCount(str) {
+    return /[KkMmBb]$/.test(String(str || "").trim());
+  }
+
+  function approximateTarget(str, value) {
+    if (value === null || !isApproximateCount(str)) return value;
+    var unit = String(str).trim().slice(-1).toLowerCase();
+    var step = unit === "k" ? 100 : unit === "m" ? 100000 : 100000000;
+    var margin = Math.max(step, Math.round((value * 0.1) / step) * step);
+    return Math.round(value + margin);
+  }
+
   function getProfileInfo() {
     var username = getUsernameFromUrl();
     var followers = null;
     var following = null;
+    var followersApproximate = false;
+    var followingApproximate = false;
+    var followersTarget = null;
+    var followingTarget = null;
     var posts = null;
 
     var meta = document.querySelector('meta[property="og:description"]');
@@ -29,8 +45,16 @@
       var mf = t.match(/([\d.,]+[KkMmBb]?)\s*Followers/i);
       var mg = t.match(/([\d.,]+[KkMmBb]?)\s*Following/i);
       var mp = t.match(/([\d.,]+[KkMmBb]?)\s*Posts/i);
-      if (mf) followers = parseCount(mf[1]);
-      if (mg) following = parseCount(mg[1]);
+      if (mf) {
+        followers = parseCount(mf[1]);
+        followersApproximate = isApproximateCount(mf[1]);
+        followersTarget = approximateTarget(mf[1], followers);
+      }
+      if (mg) {
+        following = parseCount(mg[1]);
+        followingApproximate = isApproximateCount(mg[1]);
+        followingTarget = approximateTarget(mg[1], following);
+      }
       if (mp) posts = parseCount(mp[1]);
     }
 
@@ -40,13 +64,30 @@
         var title = spans[i].getAttribute("title") || "";
         var m = title.match(/([\d.,]+[KkMmBb]?)/);
         if (!m) continue;
-        if (/followers/i.test(title) && followers === null) followers = parseCount(m[1]);
-        if (/following/i.test(title) && following === null) following = parseCount(m[1]);
+        if (/followers/i.test(title) && followers === null) {
+          followers = parseCount(m[1]);
+          followersApproximate = isApproximateCount(m[1]);
+          followersTarget = approximateTarget(m[1], followers);
+        }
+        if (/following/i.test(title) && following === null) {
+          following = parseCount(m[1]);
+          followingApproximate = isApproximateCount(m[1]);
+          followingTarget = approximateTarget(m[1], following);
+        }
         if (/posts/i.test(title) && posts === null) posts = parseCount(m[1]);
       }
     }
 
-    return { username: username, followers: followers, following: following, posts: posts };
+    return {
+      username: username,
+      followers: followers,
+      following: following,
+      followersApproximate: followersApproximate,
+      followingApproximate: followingApproximate,
+      followersTarget: followersTarget,
+      followingTarget: followingTarget,
+      posts: posts
+    };
   }
 
   chrome.runtime.onMessage.addListener(function (msg, sender, sendResponse) {

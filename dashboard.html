@@ -13,11 +13,13 @@
       <p id="subtitle"></p>
     </div>
     <div class="header-actions">
+      <select id="savedProfileSelect" class="saved-profile-select" data-i18n-title="savedProfiles" aria-label="Saved profiles"></select>
       <div class="lang-buttons" role="group" aria-label="Language">
         <button id="langIdBtn" class="lang-button" type="button" aria-pressed="false">ID</button>
         <button id="langEnBtn" class="lang-button" type="button" aria-pressed="false">EN</button>
       </div>
       <button id="themeToggle" class="theme-toggle" type="button" data-i18n="themeDark" data-i18n-title="themeToggle">Dark</button>
+      <a class="web-version-link" href="https://ig-saria.vercel.app/" target="_blank" rel="noopener" data-i18n="webVersion">Web version</a>
       <button id="refreshBtn" data-i18n="reAnalyze">Re-analyze</button>
       <button id="continueBtn" class="hidden" data-i18n="continueCollecting">Continue collecting</button>
       <button id="exportHtmlBtn" data-i18n="exportHtml">Export HTML</button>
@@ -88,7 +90,7 @@
     </div>
     <div class="stat warn">
       <b id="stFans">0</b>
-      <span data-i18n="fans">Not following back</span>
+      <span data-i18n="fans">Only followers</span>
     </div>
   </section>
 
@@ -101,7 +103,7 @@
   <nav class="tabs" id="tabs">
     <button class="tab active" data-tab="mutual"><span data-i18n="mutual">Mutual</span> <span id="countMutual">0</span></button>
     <button class="tab" data-tab="notback"><span data-i18n="notFollowingBack">Not following back</span> <span id="countNotBack">0</span></button>
-    <button class="tab" data-tab="fans"><span data-i18n="fans">Not following back</span> <span id="countFans">0</span></button>
+    <button class="tab" data-tab="fans"><span data-i18n="fans">Only followers</span> <span id="countFans">0</span></button>
     <button class="tab" data-tab="allf"><span data-i18n="allFollowers">All followers</span> <span id="countAllF">0</span></button>
     <button class="tab" data-tab="allg"><span data-i18n="allFollowing">All following</span> <span id="countAllG">0</span></button>
   </nav>
@@ -121,6 +123,7 @@
 
   <script src="comparison.js"></script>
   <script src="file-import.js"></script>
+  <script src="storage.js"></script>
   <script src="i18n.js"></script>
   <script src="dashboard.js"></script>
 </body>

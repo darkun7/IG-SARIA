@@ -52,6 +52,10 @@
 
   <section id="progress" class="card hidden">
     <div class="bar"><div id="barFill"></div></div>
+    <div class="activity-row" aria-live="polite">
+      <span class="activity-spinner" aria-hidden="true"></span>
+      <span data-i18n="collectingLive">Collecting data...</span>
+    </div>
     <p id="progressText"></p>
     <p id="reconnectNote" class="hint hidden" data-i18n="reconnected"></p>
     <button id="cancelBtn" class="ghost" data-i18n="cancel">Cancel</button>
@@ -63,6 +67,16 @@
   </section>
 
   <p id="status"></p>
+
+  <footer class="popup-footer">
+    <span id="versionText"></span>
+    <a id="updateLink" href="https://chromewebstore.google.com/detail/ig-saria/miofeejbonlhkhineeemennccankkhlh?authuser=0&hl=en" target="_blank" rel="noopener" data-i18n="updateExtension">Check for update</a>
+  </footer>
+
+  <div class="popup-links">
+    <button id="openDashboardBtn" class="ghost" type="button" data-i18n="openDashboard">Open dashboard</button>
+    <a href="https://ig-saria.vercel.app/" target="_blank" rel="noopener" data-i18n="webVersion">Web version</a>
+  </div>
 
   <script src="i18n.js"></script>
   <script src="popup.js"></script>

@@ -10,8 +10,9 @@ A Chrome extension that analyzes an Instagram profile's **followers** and **foll
 - Opens a **dashboard recap** with:
   - **Mutual**: people you follow who follow you back
   - **Not following back**: accounts you follow that don't follow you back
-  - **Not following back**: followers you don't follow back
+  - **Only followers**: followers you don't follow back
   - Full follower / following lists
+- Completed analyses are saved locally by username with the collection timestamp, so multiple profiles can be revisited from the dashboard.
 - Click any account to open their Instagram profile in a new tab.
 - Filter the list live, and export the current view as CSV or a full report as HTML.
 - Upload Instagram exports directly in the dashboard: each Followers and Following field accepts JSON, HTML, or ZIP. ZIP exports are unpacked in memory and the matching list is selected automatically.

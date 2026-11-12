@@ -1,3 +1,5 @@
+importScripts("storage.js", "scrape-checkpoint.js");
+
 (function () {
   "use strict";
 
@@ -7,6 +9,8 @@
     username: null,
     expectedF: null,
     expectedG: null,
+    expectedFApproximate: false,
+    expectedGApproximate: false,
     followers: [],
     following: [],
     followersDone: false,
@@ -32,7 +36,9 @@
   function loadState(cb) {
     chrome.storage.local.get("igScrape", function (res) {
       if (res.igScrape) state = res.igScrape;
-      if (state.maxPasses == null) state.maxPasses = 3;
+      if (!Array.isArray(state.followers)) state.followers = [];
+      if (!Array.isArray(state.following)) state.following = [];
+      if (state.maxPasses == null) state.maxPasses = 5;
       if (state.stagePass == null) state.stagePass = 0;
       if (state.consecutiveEmpty == null) state.consecutiveEmpty = 0;
       if (cb) cb();
@@ -43,6 +49,22 @@
     var obj = {};
     obj.igScrape = state;
     chrome.storage.local.set(obj, cb || function () {});
+  }
+
+  function checkpointProfile(complete, error, cb) {
+    if (!state.username) {
+      if (cb) cb();
+      return;
+    }
+
+    var snapshot = IGSariaCheckpoint.buildProfileSnapshot(state, Date.now(), complete, error);
+    IGSariaStorage.saveProfile(snapshot, cb || function () {});
+  }
+
+  function persistProgress(cb) {
+    checkpointProfile(false, null, function () {
+      saveState(cb);
+    });
   }
 
   function post(msg) {
@@ -256,9 +278,12 @@
     post({ type: "PROGRESS", stage: stage, count: state.stageCount });
 
     // Stage completed (or stopped early by a soft block)
-    if (!state.hasMore || state.stageCount >= expectedForStage()) {
-      var expected = expectedForStage();
-      var short = expected != null && state.stageCount < expected * 0.98;
+    var expected = expectedForStage();
+    var expectedApproximate = state.stage === "followers"
+      ? !!state.expectedFApproximate
+      : !!state.expectedGApproximate;
+    if (!state.hasMore || (expected != null && state.stageCount >= expected)) {
+      var short = expected != null && !expectedApproximate && state.stageCount < expected * 0.98;
 
       if (!state.hasMore && short && state.stagePass < state.maxPasses) {
         // Incomplete - run this stage again from scratch and merge results
@@ -268,7 +293,7 @@
         state.iterations = 0;
         state.consecutiveEmpty = 0;
         post({ type: "STATUS", text: "retryingStage" });
-        saveState(function () {
+        persistProgress(function () {
           chrome.alarms.create("ig-tick", { when: Date.now() + 3000 });
         });
         return;
@@ -283,7 +308,7 @@
       }
     }
 
-    saveState(function () {
+    persistProgress(function () {
       if (stopRequested) {
         finishScrape(false, new Error("Stopped"));
         return;
@@ -326,8 +351,10 @@
 
     if (!success) {
       state.error = (err && err.message) || String(err);
-      saveState(function () {
-        post({ type: "ERROR", message: state.error });
+      checkpointProfile(false, state.error, function () {
+        saveState(function () {
+          post({ type: "ERROR", message: state.error });
+        });
       });
       return;
     }
@@ -337,22 +364,24 @@
     state.followers = Array.from(new Set(state.followers));
     state.following = Array.from(new Set(state.following));
 
-    var incomplete = (state.expectedF !== null && state.followers.length < state.expectedF) ||
-                     (state.expectedG !== null && state.following.length < state.expectedG);
+    var incomplete = (state.expectedF !== null && !state.expectedFApproximate && state.followers.length < state.expectedF) ||
+                     (state.expectedG !== null && !state.expectedGApproximate && state.following.length < state.expectedG);
+    state.incomplete = incomplete;
 
-    var igData = {
-      username: state.username,
-      followers: state.followers,
-      following: state.following,
-      date: Date.now(),
-      incomplete: incomplete,
-      expectedF: state.expectedF,
-      expectedG: state.expectedG
-    };
+    var igData = IGSariaCheckpoint.buildProfileSnapshot(state, Date.now(), true);
+    igData.incomplete = incomplete;
 
-    chrome.storage.local.set({ igData: igData }, function () {
+    IGSariaStorage.saveProfile(igData, function () {
       saveState(function () {
-        post({ type: "DONE", followers: state.followers, following: state.following, resumed: !!state.resumed });
+        post({
+          type: "DONE",
+          followers: state.followers,
+          following: state.following,
+          resumed: !!state.resumed,
+          incomplete: incomplete,
+          expectedF: state.expectedF,
+          expectedG: state.expectedG
+        });
       });
     });
   }
@@ -365,6 +394,11 @@
       followersCount: state.followers.length,
       followingCount: state.following.length,
       done: state.done,
+      incomplete: !!state.incomplete,
+      expectedF: state.expectedF,
+      expectedG: state.expectedG,
+      expectedFApproximate: !!state.expectedFApproximate,
+      expectedGApproximate: !!state.expectedGApproximate,
       error: state.error,
       username: state.username,
       lastDone: !!(state.done || (state.username))
@@ -377,6 +411,8 @@
       username: msg.username,
       expectedF: msg.expectedF != null ? msg.expectedF : null,
       expectedG: msg.expectedG != null ? msg.expectedG : null,
+      expectedFApproximate: !!msg.expectedFApproximate,
+      expectedGApproximate: !!msg.expectedGApproximate,
       followers: [],
       following: [],
       followersDone: false,
@@ -389,76 +425,103 @@
       waitingForRetry: false,
       error: null,
       done: false,
+      incomplete: false,
       retryAttempt: 0,
-      maxPasses: 3,
+      maxPasses: 5,
       stagePass: 0,
       consecutiveEmpty: 0,
       resumed: false,
-      startedAt: Date.now()
+      startedAt: Date.now(),
+      collectedAt: Date.now()
     };
     setStage("followers");
-    saveState(function () {
-      state.running = true;
-      saveState();
-      step();
-    });
-  }
-
-  function resumeScrape() {
-    chrome.storage.local.get("igData", function (res) {
-      var prev = res.igData || null;
-      stopRequested = false;
-
-      var followers = prev && prev.followers ? prev.followers.slice() : [];
-      var following = prev && prev.following ? prev.following.slice() : [];
-      var expectedF = prev && prev.expectedF != null ? prev.expectedF : null;
-      var expectedG = prev && prev.expectedG != null ? prev.expectedG : null;
-
-      var needsFollowers = expectedF !== null && followers.length < expectedF;
-      var needsFollowing = expectedG !== null && following.length < expectedG;
-
-      if (!needsFollowers && !needsFollowing) {
-        post({ type: "DONE", followers: followers, following: following });
-        return;
-      }
-
-      state = {
-        username: prev ? prev.username : state.username,
-        expectedF: expectedF,
-        expectedG: expectedG,
-        followers: followers,
-        following: following,
-        followersDone: !needsFollowers,
-        followingDone: !needsFollowing,
-        nextMaxId: null,
-        hasMore: true,
-        stageCount: 0,
-        iterations: 0,
-        running: false,
-        waitingForRetry: false,
-        error: null,
-        done: false,
-        retryAttempt: 0,
-        maxPasses: 3,
-        stagePass: 0,
-        consecutiveEmpty: 0,
-        resumed: true,
-        startedAt: Date.now()
-      };
-
-      if (!needsFollowers && needsFollowing) {
-        state.followersDone = true;
-        setStage("following");
-      } else {
-        state.followersDone = false;
-        setStage("followers");
-      }
-
-      post({ type: "STATUS", text: "resuming" });
+    checkpointProfile(false, null, function () {
       saveState(function () {
         state.running = true;
         saveState();
         step();
+      });
+    });
+  }
+
+  function resumeScrape(targets) {
+    loadState(function () {
+      IGSariaStorage.readProfiles(function (profiles) {
+        var prev = profiles.profiles[profiles.active] || null;
+        var runtimeKey = state.username ? IGSariaStorage.profileKey(state.username) : null;
+        if (runtimeKey && runtimeKey === profiles.active && !state.done) {
+          prev = IGSariaCheckpoint.buildProfileSnapshot(state, Date.now(), false, state.error);
+        }
+        if (targets && targets.username && prev &&
+            IGSariaStorage.profileKey(targets.username) === profiles.active) {
+          if (targets.expectedF !== undefined) prev.expectedF = targets.expectedF;
+          if (targets.expectedG !== undefined) prev.expectedG = targets.expectedG;
+          if (targets.expectedFApproximate !== undefined) {
+            prev.expectedFApproximate = !!targets.expectedFApproximate;
+          }
+          if (targets.expectedGApproximate !== undefined) {
+            prev.expectedGApproximate = !!targets.expectedGApproximate;
+          }
+        }
+        stopRequested = false;
+
+        var followers = prev && prev.followers ? prev.followers.slice() : [];
+        var following = prev && prev.following ? prev.following.slice() : [];
+        var expectedF = prev && prev.expectedF != null ? prev.expectedF : null;
+        var expectedG = prev && prev.expectedG != null ? prev.expectedG : null;
+        var expectedFApproximate = !!(prev && prev.expectedFApproximate);
+        var expectedGApproximate = !!(prev && prev.expectedGApproximate);
+
+        var needsFollowers = expectedF !== null && followers.length < expectedF;
+        var needsFollowing = expectedG !== null && following.length < expectedG;
+
+        if (!needsFollowers && !needsFollowing) {
+          post({ type: "DONE", followers: followers, following: following });
+          return;
+        }
+
+        state = {
+          username: prev ? prev.username : state.username,
+          expectedF: expectedF,
+          expectedG: expectedG,
+          expectedFApproximate: expectedFApproximate,
+          expectedGApproximate: expectedGApproximate,
+          followers: followers,
+          following: following,
+          followersDone: !needsFollowers,
+          followingDone: !needsFollowing,
+          nextMaxId: null,
+          hasMore: true,
+          stageCount: 0,
+          iterations: 0,
+          running: false,
+          waitingForRetry: false,
+          error: null,
+          done: false,
+          incomplete: false,
+          retryAttempt: 0,
+          maxPasses: 5,
+          stagePass: 0,
+          consecutiveEmpty: 0,
+          resumed: true,
+          startedAt: Date.now(),
+          collectedAt: prev && (prev.collectedAt || prev.date) ? (prev.collectedAt || prev.date) : Date.now()
+        };
+
+        if (!needsFollowers && needsFollowing) {
+          state.followersDone = true;
+          setStage("following");
+        } else {
+          state.followersDone = false;
+          setStage("followers");
+        }
+
+        post({ type: "STATUS", text: "resuming" });
+        saveState(function () {
+          state.running = true;
+          saveState();
+          step();
+        });
       });
     });
   }
@@ -482,14 +545,17 @@
   chrome.runtime.onStartup.addListener(resumeIfNeeded);
 
   chrome.alarms.onAlarm.addListener(function (alarm) {
-    if (alarm.name === "ig-tick") {
-      step();
-    } else if (alarm.name === RETRY_ALARM) {
-      state.waitingForRetry = false;
-      state.running = true;
-      saveState();
-      step();
-    }
+    loadState(function () {
+      if (alarm.name === "ig-tick") {
+        if (!state.done && !state.error && state.running) step();
+      } else if (alarm.name === RETRY_ALARM) {
+        if (state.done || state.error) return;
+        state.waitingForRetry = false;
+        state.running = true;
+        saveState();
+        step();
+      }
+    });
   });
 
   chrome.runtime.onConnect.addListener(function (port) {
@@ -515,7 +581,7 @@
       return false;
     }
     if (msg && msg.type === "RESUME") {
-      resumeScrape();
+      resumeScrape(msg);
       sendResponse({ ok: true });
       return false;
     }

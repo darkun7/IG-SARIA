@@ -21,6 +21,11 @@
     $("status").textContent = text || "";
   }
 
+  function updateVersionLabel() {
+    var manifest = chrome.runtime.getManifest();
+    $("versionText").textContent = I18n.t("version", { version: manifest.version });
+  }
+
   function stageLabel(stage) {
     return I18n.t(stage === "following" ? "following" : "followers");
   }
@@ -29,12 +34,20 @@
     try { if (port) port.disconnect(); } catch (e) {}
     port = chrome.runtime.connect({ name: "ig-status" });
     port.onMessage.addListener(onPortMessage);
-    port.onDisconnect.addListener(function () { port = null; });
+    port.onDisconnect.addListener(function () {
+      port = null;
+      if (scrapeActive) {
+        setTimeout(function () {
+          if (scrapeActive && !port) connectPort();
+        }, 1000);
+      }
+    });
   }
 
   function showIdle() {
     scrapeActive = false;
     $("progress").classList.add("hidden");
+    $("progress").classList.remove("active");
     $("resumeCard").classList.add("hidden");
     $("actions").classList.remove("hidden");
   }
@@ -44,6 +57,7 @@
     $("actions").classList.add("hidden");
     $("resumeCard").classList.add("hidden");
     $("progress").classList.remove("hidden");
+    $("progress").classList.add("active");
     $("reconnectNote").classList.toggle("hidden", !reconnected);
   }
 
@@ -51,6 +65,7 @@
     scrapeActive = false;
     $("actions").classList.add("hidden");
     $("progress").classList.add("hidden");
+    $("progress").classList.remove("active");
     $("resumeCard").classList.remove("hidden");
     $("resumeText").textContent = I18n.t("reportReady");
     $("viewReportBtn").textContent = I18n.t("openDashboard");
@@ -65,7 +80,19 @@
 
   function onPortMessage(msg) {
     if (!msg) return;
-    if (msg.type === "PROGRESS") {
+    if (msg.type === "STATUS_SNAPSHOT") {
+      var snapshot = msg.status || {};
+      if (snapshot.active) {
+        showProgress(true);
+        if (snapshot.stage) setProgressText(snapshot.stage, snapshot.count || 0);
+      } else if (snapshot.done) {
+        showReport();
+        if (snapshot.incomplete) {
+          $("resumeText").textContent = I18n.t("stillIncomplete");
+          setStatus(I18n.t("stillIncomplete"));
+        }
+      }
+    } else if (msg.type === "PROGRESS") {
       var isFollowing = msg.stage === "following";
       $("barFill").style.width = isFollowing ? "85%" : "40%";
       setProgressText(msg.stage, msg.count);
@@ -81,6 +108,10 @@
       if (msg.resumed) {
         showReport();
         setStatus(I18n.t("statusUpdated"));
+      } else if (msg.incomplete) {
+        showReport();
+        $("resumeText").textContent = I18n.t("stillIncomplete");
+        setStatus(I18n.t("stillIncomplete"));
       } else {
         showReport();
         setStatus(I18n.t("openingDashboard"));
@@ -199,8 +230,10 @@
     chrome.runtime.sendMessage({
       type: "SCRAPE",
       username: p.username,
-      expectedF: p.followers,
-      expectedG: p.following
+      expectedF: p.followersApproximate ? p.followersTarget : p.followers,
+      expectedG: p.followingApproximate ? p.followingTarget : p.following,
+      expectedFApproximate: !!p.followersApproximate,
+      expectedGApproximate: !!p.followingApproximate
     });
     showProgress(false);
     setProgressText("followers", 0);
@@ -256,9 +289,13 @@
   $("viewReportBtn").addEventListener("click", function () {
     chrome.tabs.create({ url: chrome.runtime.getURL("dashboard.html") });
   });
+  $("openDashboardBtn").addEventListener("click", function () {
+    chrome.tabs.create({ url: chrome.runtime.getURL("dashboard.html") });
+  });
 
   window.onLangChanged = function () {
     I18n.applyToDocument();
+    updateVersionLabel();
     if (activeTab && !scrapeActive) {
       if (!activeTab.url || activeTab.url.indexOf("instagram.com") === -1) {
         setStatus(I18n.t("statusNotOnIg"));
@@ -271,6 +308,7 @@
   I18n.load(function () {
     I18n.applyToDocument();
     I18n.bindLangSelect($("langSelect"));
+    updateVersionLabel();
     start();
   });
 })();

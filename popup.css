@@ -270,6 +270,39 @@ button.big {
   transition: width 0.3s ease;
 }
 
+#progress.active #barFill {
+  background-size: 200% 100%;
+  animation: progress-shimmer 1.2s linear infinite;
+}
+
+.activity-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 10px;
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.activity-spinner {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 12px;
+  border: 2px solid #e5e7eb;
+  border-top-color: #bc1888;
+  border-radius: 50%;
+  animation: activity-spin 0.8s linear infinite;
+}
+
+@keyframes activity-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes progress-shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
 #progressText {
   margin: 8px 0 0;
   font-size: 12px;
@@ -308,4 +341,54 @@ button.big {
   font-size: 12px;
   color: #8e8e8e;
   word-break: break-word;
+}
+
+.popup-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #efefef;
+  color: #8e8e8e;
+  font-size: 11px;
+}
+
+.popup-footer a {
+  color: #8e3abf;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.popup-footer a:hover {
+  text-decoration: underline;
+}
+
+.popup-links {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.popup-links button,
+.popup-links a {
+  flex: 1;
+  text-align: center;
+  font-size: 11px;
+}
+
+.popup-links a {
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: #f1f5f9;
+  color: #475569;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.popup-links a:hover {
+  background: #e2e8f0;
 }

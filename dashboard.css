@@ -258,6 +258,33 @@ button.primary {
   display: flex;
   gap: 8px;
   align-items: center;
+  flex-wrap: wrap;
+}
+
+.saved-profile-select {
+  max-width: 170px;
+  padding: 6px 8px;
+  border: 1px solid #dbdbdb;
+  border-radius: 6px;
+  font-size: 12px;
+  background: #fff;
+  color: #262626;
+  cursor: pointer;
+  outline: none;
+}
+
+.web-version-link {
+  padding: 7px 10px;
+  border-radius: 6px;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.web-version-link:hover {
+  background: #e2e8f0;
 }
 
 .lang-buttons {
@@ -457,6 +484,21 @@ body.dark button:not(.primary):not(.lang-button) {
 body.dark .lang-buttons {
   border-color: #4b5563;
   background: #111827;
+}
+
+body.dark .saved-profile-select {
+  border-color: #4b5563;
+  background: #111827;
+  color: #f3f4f6;
+}
+
+body.dark .web-version-link {
+  background: #374151;
+  color: #e5e7eb;
+}
+
+body.dark .web-version-link:hover {
+  background: #4b5563;
 }
 
 body.dark .lang-button {

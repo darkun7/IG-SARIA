@@ -3,7 +3,7 @@ VERSION   := $(shell node -p "require('./manifest.json').version" 2>/dev/null ||
 DIST      := dist
 ZIP       := $(DIST)/$(NAME)-$(VERSION).zip
 
-SRC       := manifest.json background.js content.js comparison.js file-import.js i18n.js popup.html popup.css popup.js dashboard.html dashboard.css dashboard.js logo-saria.png favicon.ico README.md
+SRC       := manifest.json background.js storage.js scrape-checkpoint.js content.js comparison.js file-import.js i18n.js popup.html popup.css popup.js dashboard.html dashboard.css dashboard.js logo-saria.png favicon.ico README.md
 
 .PHONY: all build check clean distclean
 
@@ -15,6 +15,7 @@ check:
 	node -e "JSON.parse(require('fs').readFileSync('manifest.json','utf8')); console.log('    manifest OK')"
 	@echo "==> Checking JS syntax"
 	node --check background.js
+	node --check scrape-checkpoint.js
 	node --check content.js
 	node --check comparison.js
 	node --check file-import.js
